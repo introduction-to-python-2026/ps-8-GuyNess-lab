@@ -1,0 +1,46 @@
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+from google.colab import files
+url = "https://raw.githubusercontent.com/datasets/population/master/data/population.csv"
+
+uploaded = files.upload()
+if uploaded:
+    fname = list(uploaded.keys())[0]
+    print("Uploaded:", fname)
+else:
+    if os.path.exists("population.csv"):
+        fname = "population.csv"
+        print("Using existing local file:", fname)
+    else:
+        try:
+            df = pd.read_csv(url)
+            df.to_csv("population.csv", index=False)
+            fname = "population.csv"
+            print("Downloaded fallback file from URL to population.csv")
+        except Exception as e:
+            raise RuntimeError("לא הועלה קובץ ואין אפשרות להורדה: " + str(e))
+
+df = pd.read_csv(fname)
+df.to_csv("/content/population_saved.csv", index=False)
+df.columns = df.columns.str.strip()
+if "Value" not in df.columns and "Population" in df.columns:
+    df = df.rename(columns={"Population":"Value"})
+if "Country Name" in df.columns:
+    if "World" in df["Country Name"].unique():
+        df_plot = df[df["Country Name"]=="World"].copy()
+    else:
+        df_plot = df.groupby("Year", as_index=False)["Value"].sum()
+else:
+    df_plot = df.groupby("Year", as_index=False)["Value"].sum()
+df_plot["Year"] = pd.to_numeric(df_plot["Year"], errors="coerce")
+df_plot = df_plot.dropna(subset=["Year"])
+df_plot = df_plot.sort_values("Year")
+plt.figure(figsize=(10,6))
+plt.plot(df_plot["Year"], df_plot["Value"], marker="o")
+plt.xlabel("Year")
+plt.ylabel("Population (Value)")
+plt.title("Population over time")
+plt.grid(True)
+plt.show()
+print("Saved raw CSV to /content/population_saved.csv")
